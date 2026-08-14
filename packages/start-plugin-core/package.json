@@ -74,6 +74,14 @@
         "default": "./dist/esm/rsbuild/types.js"
       }
     },
+    "./bun": {
+      "bun": "./src/bun/index.ts",
+      "import": {
+        "types": "./dist/esm/bun/index.d.ts",
+        "default": "./dist/esm/bun/index.js"
+      },
+      "default": "./src/bun/index.ts"
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -110,16 +118,21 @@
     "@rsbuild/core": "^2.1.0",
     "@types/babel__code-frame": "^7.0.6",
     "@types/babel__core": "^7.20.5",
+    "@types/bun": "^1.3.14",
     "@types/node": ">=20",
     "@types/picomatch": "^4.0.2",
     "vite": "*"
   },
   "peerDependencies": {
     "@rsbuild/core": "^2.0.0",
+    "bun": ">=1.2.0",
     "vite": ">=7.0.0"
   },
   "peerDependenciesMeta": {
     "@rsbuild/core": {
+      "optional": true
+    },
+    "bun": {
       "optional": true
     },
     "vite": {
