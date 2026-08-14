@@ -27,6 +27,7 @@ import {
 } from './normalized-client-build'
 import { postBuildWithBun } from './post-build'
 import { runBunNitroBuild } from './nitro-bridge'
+import { runBunStandaloneCompile } from './standalone-compile'
 import { createBunDevServer } from './dev-server'
 import {
   hmrEventForScope,
@@ -337,6 +338,21 @@ export function tanStackStartBun(
         serverOutDir: ctx.outDirs.server,
         clientOutDir: clientOutDirForPostBuild,
       })
+
+      const standaloneOpt =
+        startPluginOpts.bun?.standalone ?? corePluginOpts.bun?.standalone
+      // Always embed dist/client (not Nitro .output/public).
+      if (standaloneOpt && standaloneOpt !== false) {
+        const result = await runBunStandaloneCompile({
+          root,
+          clientOutDir: ctx.outDirs.client,
+          serverOutDir: ctx.outDirs.server,
+          standalone: standaloneOpt,
+        })
+        console.info(
+          `[tanstack-start-bun] standalone executable → ${result.outfile}`,
+        )
+      }
     },
 
     async dev(opts) {

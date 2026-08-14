@@ -36,6 +36,16 @@ export const tanstackStartBunOptionsSchema = tanstackStartOptionsObjectSchema
             }),
           ])
           .optional(),
+        standalone: z
+          .union([
+            z.literal(false),
+            z.object({
+              outfile: z.string().optional(),
+              target: z.string().optional(),
+              compile: z.record(z.string(), z.any()).optional(),
+            }),
+          ])
+          .optional(),
       })
       .optional(),
   })

@@ -50,6 +50,7 @@ declare module 'bun' {
   export interface BuildConfig {
     entrypoints: Array<string>
     outdir?: string
+    outfile?: string
     target?: 'browser' | 'bun' | 'node'
     format?: 'esm' | 'cjs' | 'iife'
     splitting?: boolean
@@ -59,6 +60,8 @@ declare module 'bun' {
     define?: Record<string, string>
     plugins?: Array<BunPlugin>
     packages?: 'bundle' | 'external'
+    /** Standalone executable (Bun --compile). */
+    compile?: boolean | string | Record<string, unknown>
   }
 
   export interface BuildArtifact {

@@ -485,10 +485,28 @@ await start.build()
 | Path | Role |
 |------|------|
 | Vite + `nitro/vite` | Bun/Node/… as **runtime** after Vite build |
-| Bun bundler + `host.js` | Bun as **bundler**; no Nitro (default) |
+| Bun bundler + `host.js` | Bun as **bundler**; deploy `dist/` with Bun (default) |
 | Bun bundler + `bun.nitro` | Bun as **bundler**, then programmatic Nitro 3 → `.output` |
+| Bun bundler + `bun.standalone` | Bun as **bundler**, then `Bun.build({ compile })` → single OS/arch executable (embeds `dist/client`) |
 
-Dev still uses the Bun host (`createBunDevServer`); Nitro is production-build only in this adapter.
+#### Optional Bun standalone executable (production only)
+
+```ts
+const start = tanstackStart({
+  bun: {
+    standalone: {
+      outfile: 'dist/server/start', // default
+      // target: 'linux-x64', // optional cross-compile
+    },
+  },
+})
+await start.build()
+// → dist/server/start (large binary; run directly, set PORT/HOST)
+```
+
+Always compiles from **`dist/`** (not Nitro `.output`). Binary size includes the Bun runtime and is platform-specific. Experimental — see [Bun executables](https://bun.com/docs/bundler/executables).
+
+Dev still uses the Bun host (`createBunDevServer`); Nitro and standalone compile are production-build only.
 
 > Module-level HMR and RSC are not part of this adapter yet.
 

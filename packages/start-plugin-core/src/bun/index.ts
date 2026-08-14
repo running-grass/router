@@ -5,10 +5,13 @@ export type {
   BunCoreOptions,
   BunCssOptions,
   BunNitroOptions,
+  BunStandaloneOptions,
   BunEnvironmentName,
 } from './types'
 export { runBunNitroBuild } from './nitro-bridge'
 export type { BunNitroBuildResult } from './nitro-bridge'
+export { runBunStandaloneCompile } from './standalone-compile'
+export type { BunStandaloneCompileResult } from './standalone-compile'
 export {
   createStaticThenFetch,
   createBunProdServer,

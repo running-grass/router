@@ -6,10 +6,13 @@
     "dev": "bun run ./scripts/dev.ts",
     "build": "bun run ./scripts/build.ts",
     "build:nitro": "bun run ./scripts/build-nitro.ts",
+    "build:standalone": "bun run ./scripts/build-standalone.ts",
     "start": "bun run ./dist/server/host.js",
     "start:nitro": "node .output/server/index.mjs",
+    "start:standalone": "./dist/server/start",
     "smoke": "bun run ./scripts/smoke.ts",
     "smoke:nitro": "bun run ./scripts/smoke-nitro.ts",
+    "smoke:standalone": "bun run ./scripts/smoke-standalone.ts",
     "test:e2e": "bun run smoke"
   },
   "dependencies": {

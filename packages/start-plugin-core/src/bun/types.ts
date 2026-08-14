@@ -29,6 +29,22 @@ export interface BunNitroOptions {
   config?: Record<string, unknown> | undefined
 }
 
+/**
+ * Optional Bun `--compile` standalone executable (production only).
+ * Embeds `dist/client` + `server.js` into a single binary for the target OS/arch.
+ */
+export interface BunStandaloneOptions {
+  /** Output path (default: `dist/server/start`, `.exe` on Windows). */
+  outfile?: string | undefined
+  /**
+   * Cross-compile target (e.g. `linux-x64`, `darwin-arm64`).
+   * Omitted → current platform (`compile: true`).
+   */
+  target?: string | undefined
+  /** Pass-through Bun `CompileBuildOptions` subset (windows.*, execArgv, …). */
+  compile?: Record<string, unknown> | undefined
+}
+
 export interface BunCoreOptions {
   /** Client output subdirectory under root (default: dist/client) */
   clientOutDir?: string | undefined
@@ -54,6 +70,11 @@ export interface BunCoreOptions {
    * Dev still uses `createBunDevServer` (Nitro is production-only in v1).
    */
   nitro?: false | BunNitroOptions | undefined
+  /**
+   * Optional Bun standalone executable via `Bun.build({ compile })`.
+   * Always based on `dist/` (not `.output`). Production build only.
+   */
+  standalone?: false | BunStandaloneOptions | undefined
 }
 
 export type TanStackStartBunPluginCoreOptions = TanStackStartCoreOptions & {
