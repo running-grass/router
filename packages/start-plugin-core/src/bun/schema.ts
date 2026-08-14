@@ -15,6 +15,10 @@ export const tanstackStartBunOptionsSchema = tanstackStartOptionsObjectSchema
         publicBase: z.string().optional(),
         port: z.number().int().positive().optional(),
         hostname: z.string().optional(),
+        // Plugins are runtime-only; keep schema permissive
+        plugins: z.array(z.any()).optional(),
+        clientPlugins: z.array(z.any()).optional(),
+        serverPlugins: z.array(z.any()).optional(),
       })
       .optional(),
   })
@@ -40,6 +44,9 @@ export type TanStackStartBunInputConfig = z.input<
     publicBase?: string
     port?: number
     hostname?: string
+    plugins?: Array<import('bun').BunPlugin>
+    clientPlugins?: Array<import('bun').BunPlugin>
+    serverPlugins?: Array<import('bun').BunPlugin>
   }
   server?: {
     build?: {

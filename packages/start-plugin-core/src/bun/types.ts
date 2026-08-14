@@ -11,6 +11,13 @@ export interface BunCoreOptions {
   port?: number | undefined
   /** Dev server hostname */
   hostname?: string | undefined
+  /**
+   * Extra Bun.build plugins prepended for both client and server builds.
+   * Use `clientPlugins` / `serverPlugins` for env-specific plugins.
+   */
+  plugins?: Array<import('bun').BunPlugin> | undefined
+  clientPlugins?: Array<import('bun').BunPlugin> | undefined
+  serverPlugins?: Array<import('bun').BunPlugin> | undefined
 }
 
 export type TanStackStartBunPluginCoreOptions = TanStackStartCoreOptions & {

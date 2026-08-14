@@ -152,6 +152,12 @@ export function tanStackStartBun(
     await mkdir(ctx.outDirs.client, { recursive: true })
     ctx.setPluginAdapters('client')
 
+    const bunOpts = startPluginOpts.bun ?? corePluginOpts.bun
+    const extraPlugins = [
+      ...(bunOpts?.plugins ?? []),
+      ...(bunOpts?.clientPlugins ?? []),
+    ]
+
     const result = await Bun.build({
       entrypoints: [ctx.entryAliases.client],
       outdir: ctx.outDirs.client,
@@ -168,6 +174,7 @@ export function tanStackStartBun(
       },
       define: ctx.define,
       plugins: [
+        ...extraPlugins,
         createBunAliasAndVirtualPlugin({
           aliases: ctx.entryAliases.alias,
           virtualModules: ctx.virtualModules,
@@ -223,6 +230,12 @@ export function tanStackStartBun(
     await mkdir(ctx.outDirs.server, { recursive: true })
     ctx.setPluginAdapters('server')
 
+    const bunOpts = startPluginOpts.bun ?? corePluginOpts.bun
+    const extraPlugins = [
+      ...(bunOpts?.plugins ?? []),
+      ...(bunOpts?.serverPlugins ?? []),
+    ]
+
     const result = await Bun.build({
       entrypoints: [ctx.entryAliases.server],
       outdir: ctx.outDirs.server,
@@ -238,6 +251,7 @@ export function tanStackStartBun(
       },
       define: ctx.define,
       plugins: [
+        ...extraPlugins,
         createBunAliasAndVirtualPlugin({
           aliases: ctx.entryAliases.alias,
           virtualModules: ctx.virtualModules,
