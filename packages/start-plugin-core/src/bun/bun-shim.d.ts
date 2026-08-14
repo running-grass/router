@@ -76,6 +76,7 @@ declare module 'bun' {
   export function plugin(plugin: BunPlugin): void
   export function resolve(id: string, from?: string): Promise<string>
   export function resolveSync(id: string, from?: string): string
+  export function sleep(ms: number): Promise<void>
   export function serve(options: {
     port?: number
     hostname?: string
@@ -87,6 +88,12 @@ declare module 'bun' {
     exists: () => Promise<boolean>
   } & Blob
 
+  export class Transpiler {
+    constructor(options?: { loader?: Loader })
+    transformSync(code: string, loader?: Loader): string
+    transform(code: string, loader?: Loader): Promise<string>
+  }
+
   const Bun: {
     build: typeof build
     plugin: typeof plugin
@@ -94,6 +101,8 @@ declare module 'bun' {
     resolveSync: typeof resolveSync
     serve: typeof serve
     file: typeof file
+    sleep: typeof sleep
+    Transpiler: typeof Transpiler
   }
 
   export default Bun

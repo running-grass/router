@@ -112,7 +112,8 @@
     "ufo": "^1.5.4",
     "vitefu": "^1.1.1",
     "xmlbuilder2": "^4.0.3",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "react-refresh": "^0.18.0"
   },
   "devDependencies": {
     "@rsbuild/core": "^2.1.0",

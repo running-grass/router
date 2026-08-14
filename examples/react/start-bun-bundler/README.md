@@ -17,7 +17,7 @@ Minimal example that builds with **Bun as the bundler** (no Vite).
 cd examples/react/start-bun-bundler
 bun run build   # → dist/client + dist/server/server.js + dist/server/host.js
 bun run start   # production host (host.js: static + SSR)
-bun run dev     # Bun.serve + watch rebuild + EventSource live-reload
+bun run dev     # Bun.serve + classified rebuild + ESM HMR
 bun run smoke   # build + HTTP assertions for `/`, `/about`, and assets
 ```
 
@@ -31,11 +31,12 @@ bun run smoke   # build + HTTP assertions for `/`, `/about`, and assets
 - Post-build prerender for configured `pages`
 - Production host serves `dist/client` static assets (`host.js` / `serve()`)
 - CSS `?url` (+ optional Tailwind via `@tailwindcss/node`)
+- Dev HMR: classified rebuild (server-only 不刷页面) + `/@tanstack-dev/client` ESM transform + `import.meta.hot` shim + React Refresh
 
 ## Known gaps (later)
 
-- Dev is debounce rebuild + full-page live-reload (not module-level React Refresh / HMR)
 - No RSC / Nitro integration in this adapter
 - Full Vite-parity asset pipeline (fonts/images beyond CSS) still thinner
+- ESM HMR module graph / dep prebundle still simpler than Vite
 
 See `packages/start-plugin-core/src/bun/ARCHITECTURE.md` for orchestration details.

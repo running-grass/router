@@ -51,9 +51,15 @@ const server = await start.dev() // build + Bun.serve + src watch rebuild
 | `tanstack-start-manifest:v` | SSR 资源 manifest |
 | `#tanstack-start-plugin-adapters` | serialization adapters |
 
-## Dev
+## Dev / HMR
 
-`createBunDevServer`：与生产相同的静态解析（`tryServeClientAsset`）+ SSR；`fs.watch(src)` debounce rebuild；EventSource live-reload。精细 React Refresh 仍待后续。
+`createBunDevServer`：
+
+1. **Phase 1 — 智能重建**：按变更分类只 rebuild client / server / both；SSE 事件 `server-only`（不刷页面）、`client-reload`、`full-reload`
+2. **Phase 2 — ESM HMR**：浏览器入口改为 `/@tanstack-dev/client`；`/@fs/*` 按需 transform（code-splitter + StartCompiler + Bun.Transpiler）；`import.meta.hot` 改写为 `__tanstack_hot__` 垫片；React 下注入 React Refresh preamble
+3. 静态回退仍可服务 `dist/client` hashed 资源
+
+相关文件：`hmr-protocol.ts`、`hmr-runtime.ts`、`dev-transform.ts`、`react-refresh.ts`、`dev-server.ts`
 
 ## Code splitting
 
@@ -67,3 +73,4 @@ const server = await start.dev() // build + Bun.serve + src watch rebuild
 - `start-compiler-host.ts` — StartCompiler → Bun.plugin
 - `bun-plugins.ts` / `virtual-modules.ts` / `normalized-client-build.ts`
 - `import-protection.ts` / `post-build.ts` / `dev-server.ts` / `start-router-plugin.ts`
+- `hmr-protocol.ts` / `hmr-runtime.ts` / `dev-transform.ts` / `react-refresh.ts`

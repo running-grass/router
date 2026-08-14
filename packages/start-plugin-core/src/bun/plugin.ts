@@ -28,6 +28,12 @@ import {
 import { postBuildWithBun } from './post-build'
 import { createBunDevServer } from './dev-server'
 import {
+  hmrEventForScope,
+  rebuildScopeForChange,
+  shouldRegenerateRoutes,
+} from './hmr-protocol'
+import { rewriteImportMetaHot } from './hmr-runtime'
+import {
   createBunProdServer,
   generateHostEntrySource,
 } from './static-host'
@@ -319,7 +325,7 @@ export function tanStackStartBun(
       const root = opts?.root ?? process.cwd()
       const ctx = await prepare(root, 'dev')
 
-      // Initial builds so SSR has a server entry and client assets
+      // Initial builds so SSR has a server entry and client assets (fallback)
       await buildClient(ctx)
       await buildServer(ctx)
 
@@ -331,13 +337,64 @@ export function tanStackStartBun(
         clientOutDir: ctx.outDirs.client,
         serverOutDir: ctx.outDirs.server,
         publicBase: ctx.publicBase,
-        rebuild: async () => {
+        framework: corePluginOpts.framework,
+        clientEntryPath: ctx.entryAliases.client,
+        esmDev: true,
+        transformAppModule: async (code, absPath) => {
+          let next = ctx.routerSession
+            .getCodeSplitterRuntime('client')
+            .transformReference(code, absPath)
+          // StartCompiler transform for serverFn discovery on the fly
+          const { detectKindsInCode } = await import(
+            '../start-compiler/compiler'
+          )
+          const { getTransformCodeFilterForEnv } = await import(
+            '../start-compiler/config'
+          )
+          const { matchesCodeFilters } = await import(
+            '../start-compiler/host'
+          )
+          const env = 'client' as const
+          const filters = getTransformCodeFilterForEnv(env)
+          if (matchesCodeFilters(next, filters)) {
+            const kinds = detectKindsInCode(next, env)
+            if (kinds.size > 0) {
+              const result = await ctx.compilers.client.compile({
+                code: next,
+                id: absPath,
+                detectedKinds: kinds,
+              })
+              if (result?.code) {
+                next = result.code
+              }
+            }
+          }
+          return rewriteImportMetaHot(next)
+        },
+        rebuild: async (change) => {
           Object.keys(ctx.serverFnsById).forEach((k) => {
             delete ctx.serverFnsById[k]
           })
-          await ctx.routerSession.generate()
-          await buildClient(ctx)
-          await buildServer(ctx)
+
+          const scope = rebuildScopeForChange(change.kind)
+          if (shouldRegenerateRoutes(change.kind)) {
+            await ctx.routerSession.generate()
+          }
+
+          if (scope === 'client' || scope === 'both') {
+            await buildClient(ctx)
+          }
+          if (scope === 'server' || scope === 'both') {
+            await buildServer(ctx)
+          }
+
+          return {
+            scope,
+            event: hmrEventForScope(scope),
+            modules: change.path
+              ? [`/@fs${change.path.replace(/\\/g, '/')}`]
+              : undefined,
+          }
         },
         invalidate: (ids) => ctx.compilers.invalidate(ids),
       })
