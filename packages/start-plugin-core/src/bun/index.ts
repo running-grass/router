@@ -4,8 +4,11 @@ export type {
   TanStackStartBunAdapter,
   BunCoreOptions,
   BunCssOptions,
+  BunNitroOptions,
   BunEnvironmentName,
 } from './types'
+export { runBunNitroBuild } from './nitro-bridge'
+export type { BunNitroBuildResult } from './nitro-bridge'
 export {
   createStaticThenFetch,
   createBunProdServer,

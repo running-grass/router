@@ -26,6 +26,7 @@ import {
   toClientRelativeFileName,
 } from './normalized-client-build'
 import { postBuildWithBun } from './post-build'
+import { runBunNitroBuild } from './nitro-bridge'
 import { createBunDevServer } from './dev-server'
 import {
   hmrEventForScope,
@@ -314,10 +315,27 @@ export function tanStackStartBun(
         generateHostEntrySource(),
         'utf8',
       )
+
+      const nitroOpt =
+        startPluginOpts.bun?.nitro ?? corePluginOpts.bun?.nitro
+      let clientOutDirForPostBuild = ctx.outDirs.client
+
+      // Nitro after dual Bun.build; prerender after Nitro so public dir is final.
+      if (nitroOpt && nitroOpt !== false) {
+        const nitroResult = await runBunNitroBuild({
+          root,
+          clientOutDir: ctx.outDirs.client,
+          serverEntry: join(ctx.outDirs.server, 'server.js'),
+          publicBase: ctx.publicBase,
+          nitro: nitroOpt,
+        })
+        clientOutDirForPostBuild = nitroResult.publicDir
+      }
+
       await postBuildWithBun({
         startConfig: ctx.startConfig,
         serverOutDir: ctx.outDirs.server,
-        clientOutDir: ctx.outDirs.client,
+        clientOutDir: clientOutDirForPostBuild,
       })
     },
 

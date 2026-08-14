@@ -2,6 +2,16 @@
 
 TanStack Start 的 Bun bundler 适配层。对齐 `rsbuild/`：共享核心（config / planning / start-compiler / manifestBuilder / import-protection / post-build）+ Bun 特有壳。
 
+## 三套生产宿主模型（勿混用）
+
+| 路径 | Nitro | 生产宿主 |
+|------|-------|----------|
+| **Vite Start** | 应用侧组合 `nitro()` from `nitro/vite`；Start **不内置** Nitro | Nitro → `.output/server/index.mjs`；client 常到 `.output/public` |
+| **Rsbuild Start** | **不支持** Nitro | `dist/client` + `dist/server` + srvx / 自建静态+`fetch` |
+| **Bun bundler（本适配器）** | **可选** post-build bridge（`bun.nitro`）；默认无 Nitro | 默认 `dist/server/host.js`（类 Rsbuild）；开 Nitro 后另产 `.output` |
+
+官方文档里多数「Bun 部署」是 **Vite 打包 + `nitro({ preset: 'bun' })`**（Bun 当 **runtime**），不是 Bun 当 bundler。不能把 `nitro/vite` 塞进本适配器（依赖 Vite Environments）。
+
 ## API
 
 ```ts
@@ -11,6 +21,13 @@ const start = tanstackStart({ bun: { port: 3000 } })
 await start.build()          // client + server Bun.build + host.js + post-build
 await start.serve()          // 生产：dist/client 静态 + server.js fetch
 const server = await start.dev() // build + Bun.serve + src watch rebuild
+
+// 可选：双 Bun.build 之后用 Nitro 3 二次打包到 .output（仅生产；dev 仍用 Bun host）
+const startNitro = tanstackStart({
+  bun: { nitro: { preset: 'node-server' } },
+})
+await startNitro.build()
+// node .output/server/index.mjs  （或对应 preset）
 ```
 
 ## 产物契约
@@ -18,8 +35,9 @@ const server = await start.dev() // build + Bun.serve + src watch rebuild
 | 路径 | 含义 |
 |------|------|
 | `dist/server/server.js` | 纯 `default.fetch`（可挂到其他宿主） |
-| `dist/server/host.js` | **生产推荐入口**：先静态 `../client`，再 SSR |
+| `dist/server/host.js` | **默认生产推荐入口**：先静态 `../client`，再 SSR |
 | `dist/client/**` | 浏览器资源（`/assets/...`） |
+| `.output/**` | 仅当 `bun.nitro` 启用：Nitro preset 产物（`public` + `server`） |
 
 ## 冷构建顺序
 
@@ -31,7 +49,8 @@ const server = await start.dev() // build + Bun.serve + src watch rebuild
 5. 刷新 `#tanstack-start-server-fn-resolver`
 6. **Server `Bun.build`**（`target: 'bun'`）
 7. 写出 `dist/server/host.js`
-8. `postBuildWithBun`（prerender / sitemap，若配置启用）
+8. **若 `bun.nitro`**：`createNitro` → `prepare` → `copyPublicAssets` → `build` → `close`（`publicAssets` = clientOutDir；`serverEntry` = web handler 指向已产出的 `server.js`，并禁用根目录 `server.ts` 自动发现）
+9. `postBuildWithBun`（prerender / sitemap）：**在 Nitro 之后**，`TSS_CLIENT_OUTPUT_DIR` 指向最终 public（`.output/public` 或 `dist/client`）
 
 ## CSS
 
@@ -41,6 +60,12 @@ const server = await start.dev() // build + Bun.serve + src watch rebuild
 - 副作用 `import './file.css'` → hashed 文件 + 空模块
 - `bun.css.tailwind`: `'auto' | true | false`（默认 `auto`：源码引用 tailwindcss 且可 resolve `@tailwindcss/node` 时编译）
 - `bun.css.transform` 可自定义（优先于 Tailwind）
+
+## Nitro bridge（可选）
+
+- **optional peer**：`nitro`（Nitro 3）；动态 `import('nitro/builder')`
+- **Dev**：不模拟 `nitro/vite` 的 `dispatchFetch`；仍用 `createBunDevServer`
+- 实现：`nitro-bridge.ts` 的 `runBunNitroBuild`
 
 ## 虚拟模块键
 
@@ -68,6 +93,7 @@ const server = await start.dev() // build + Bun.serve + src watch rebuild
 ## 文件
 
 - `plugin.ts` — 编排
+- `nitro-bridge.ts` — 可选 Nitro 3 post-build
 - `static-host.ts` — 静态 + fetch / host.js 源码 / `serve()`
 - `css-assets-plugin.ts` — CSS `?url` / Tailwind
 - `start-compiler-host.ts` — StartCompiler → Bun.plugin

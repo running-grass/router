@@ -27,6 +27,15 @@ export const tanstackStartBunOptionsSchema = tanstackStartOptionsObjectSchema
             content: z.array(z.string()).optional(),
           })
           .optional(),
+        nitro: z
+          .union([
+            z.literal(false),
+            z.object({
+              preset: z.string().optional(),
+              config: z.record(z.string(), z.any()).optional(),
+            }),
+          ])
+          .optional(),
       })
       .optional(),
   })

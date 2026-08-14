@@ -5,14 +5,18 @@
   "scripts": {
     "dev": "bun run ./scripts/dev.ts",
     "build": "bun run ./scripts/build.ts",
+    "build:nitro": "bun run ./scripts/build-nitro.ts",
     "start": "bun run ./dist/server/host.js",
+    "start:nitro": "node .output/server/index.mjs",
     "smoke": "bun run ./scripts/smoke.ts",
+    "smoke:nitro": "bun run ./scripts/smoke-nitro.ts",
     "test:e2e": "bun run smoke"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:*",
     "@tanstack/react-start": "workspace:*",
     "@tanstack/router-plugin": "workspace:*",
+    "nitro": "npm:nitro-nightly@latest",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },

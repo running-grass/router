@@ -15,6 +15,20 @@ export interface BunCssOptions {
   content?: Array<string> | undefined
 }
 
+/**
+ * Optional post-build Nitro 3 bridge (production only).
+ * `false` / omitted → `dist/*` + `host.js` only (Rsbuild-style).
+ */
+export interface BunNitroOptions {
+  /** Nitro preset (e.g. `node-server`, `bun`, `vercel`). Default: `node-server`. */
+  preset?: string | undefined
+  /**
+   * Pass-through NitroConfig subset (baseURL, routeRules, hooks, output, …).
+   * Start still injects `publicAssets` + `serverEntry` web handler for `server.js`.
+   */
+  config?: Record<string, unknown> | undefined
+}
+
 export interface BunCoreOptions {
   /** Client output subdirectory under root (default: dist/client) */
   clientOutDir?: string | undefined
@@ -35,6 +49,11 @@ export interface BunCoreOptions {
   serverPlugins?: Array<import('bun').BunPlugin> | undefined
   /** CSS asset pipeline (`?url` / side-effect CSS + optional Tailwind). */
   css?: BunCssOptions | undefined
+  /**
+   * Optional Nitro 3 post-build packaging to `.output`.
+   * Dev still uses `createBunDevServer` (Nitro is production-only in v1).
+   */
+  nitro?: false | BunNitroOptions | undefined
 }
 
 export type TanStackStartBunPluginCoreOptions = TanStackStartCoreOptions & {

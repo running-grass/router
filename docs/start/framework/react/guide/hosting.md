@@ -459,9 +459,38 @@ await start.build()
 // or: await start.dev()
 ```
 
-See the [`start-bun-bundler`](https://github.com/TanStack/router/tree/main/examples/react/start-bun-bundler) example. Solid/Vue mirrors: `@tanstack/solid-start/plugin/bun`, `@tanstack/vue-start/plugin/bun`.
+Default production output matches the **Rsbuild-style** host: `dist/client` + `dist/server/server.js` + `dist/server/host.js` (static assets then `fetch`). See the [`start-bun-bundler`](https://github.com/TanStack/router/tree/main/examples/react/start-bun-bundler) example. Solid/Vue mirrors: `@tanstack/solid-start/plugin/bun`, `@tanstack/vue-start/plugin/bun`.
 
-> Module-level HMR, RSC, and Nitro are not part of this adapter yet.
+#### Optional Nitro bridge (production only)
+
+Unlike Vite Start (app composes `nitro()` from `nitro/vite`), the Bun bundler adapter **cannot** reuse `nitro/vite` (it depends on Vite Environments). Instead you can enable an optional post-build Nitro 3 bridge after dual `Bun.build`:
+
+```bash
+npm install nitro
+```
+
+```ts
+const start = tanstackStart({
+  bun: {
+    nitro: {
+      preset: 'node-server', // or 'bun', 'vercel', …
+      // config: { /* NitroConfig subset */ },
+    },
+  },
+})
+await start.build()
+// → also writes .output/ (public + server); prerender uses .output/public
+```
+
+| Path | Role |
+|------|------|
+| Vite + `nitro/vite` | Bun/Node/… as **runtime** after Vite build |
+| Bun bundler + `host.js` | Bun as **bundler**; no Nitro (default) |
+| Bun bundler + `bun.nitro` | Bun as **bundler**, then programmatic Nitro 3 → `.output` |
+
+Dev still uses the Bun host (`createBunDevServer`); Nitro is production-build only in this adapter.
+
+> Module-level HMR and RSC are not part of this adapter yet.
 
 ### Appwrite Sites
 

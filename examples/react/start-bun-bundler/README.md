@@ -7,7 +7,7 @@ Minimal example that builds with **Bun as the bundler** (no Vite).
 | | [`start-bun`](../start-bun) | **this example** |
 |--|--|--|
 | Dev / build | Vite (`vite dev` / `vite build`) | `tanstackStart().dev()` / `.build()` via Bun |
-| Production host | `Bun.serve` + Vite `dist` | `Bun.serve` + Bun-bundled `dist` |
+| Production host | `Bun.serve` + Vite `dist` | `Bun.serve` + Bun-bundled `dist`（默认）或可选 Nitro `.output` |
 | Plugin entry | `@tanstack/react-start/plugin/vite` | `@tanstack/react-start/plugin/bun` |
 
 ## Scripts
@@ -15,11 +15,21 @@ Minimal example that builds with **Bun as the bundler** (no Vite).
 ```bash
 # from monorepo root (packages must resolve; Bun can load src via package exports)
 cd examples/react/start-bun-bundler
-bun run build   # → dist/client + dist/server/server.js + dist/server/host.js
-bun run start   # production host (host.js: static + SSR)
-bun run dev     # Bun.serve + classified rebuild + ESM HMR
-bun run smoke   # build + HTTP assertions for `/`, `/about`, and assets
+bun run build        # → dist/client + dist/server/server.js + dist/server/host.js
+bun run start        # production host (host.js: static + SSR)
+bun run build:nitro  # same + optional bun.nitro → .output/
+bun run start:nitro  # node .output/server/index.mjs
+bun run dev          # Bun.serve + classified rebuild + ESM HMR
+bun run smoke        # build + HTTP assertions for `/`, `/about`, and assets
+bun run smoke:nitro  # nitro build + .output assertions
 ```
+
+## Production hosts
+
+1. **Default (Rsbuild-style):** `dist/server/host.js` — no Nitro
+2. **Optional Nitro bridge:** `bun: { nitro: { preset: 'node-server' } }` after dual `Bun.build` → `.output` (install `nitro` in the app). Dev still uses the Bun host; Nitro is production-only.
+
+This is **not** the same as Vite + `nitro/vite` (Bun as runtime after Vite).
 
 ## What this proves
 
@@ -28,14 +38,16 @@ bun run smoke   # build + HTTP assertions for `/`, `/about`, and assets
 - File route generation + route code-splitting (`index-*.js` / `about-*.js`)
 - Import protection plugin (shared analysis layer)
 - Serialization adapters virtual module (`#tanstack-start-plugin-adapters`)
-- Post-build prerender for configured `pages`
+- Post-build prerender for configured `pages` (after Nitro when enabled, targeting final public dir)
 - Production host serves `dist/client` static assets (`host.js` / `serve()`)
+- Optional Nitro 3 packaging to `.output/public` + `.output/server`
 - CSS `?url` (+ optional Tailwind via `@tailwindcss/node`)
 - Dev HMR: classified rebuild (server-only 不刷页面) + `/@tanstack-dev/client` ESM transform + `import.meta.hot` shim + React Refresh
 
 ## Known gaps (later)
 
-- No RSC / Nitro integration in this adapter
+- No RSC in this adapter
+- Nitro **dev** parity (`dispatchFetch`) not simulated
 - Full Vite-parity asset pipeline (fonts/images beyond CSS) still thinner
 - ESM HMR module graph / dep prebundle still simpler than Vite
 
