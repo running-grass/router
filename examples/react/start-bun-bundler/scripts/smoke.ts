@@ -1,6 +1,5 @@
 /**
- * Smoke check: build → serve → assert `/` and `/about` SSR HTML.
- * Run after packages are built: `bun run smoke`
+ * Smoke check: build → host.js → assert `/`, `/about`, and static assets.
  */
 import { spawn } from 'node:child_process'
 import { join } from 'node:path'
@@ -35,8 +34,8 @@ await new Promise<void>((resolve, reject) => {
   )
 })
 
-console.info('[smoke] starting server…')
-const server = spawn('bun', ['run', './server.ts'], {
+console.info('[smoke] starting host.js…')
+const server = spawn('bun', ['run', './dist/server/host.js'], {
   cwd: root,
   env: { ...process.env, PORT: String(port) },
   stdio: ['ignore', 'pipe', 'pipe'],
@@ -61,6 +60,25 @@ try {
   }
   if (!aboutHtml.includes('Second route')) {
     throw new Error('GET /about missing expected body')
+  }
+
+  const preloadMatch = homeHtml.match(
+    /modulepreload[^>]+href="(\/assets\/[^"]+\.js)"/,
+  )
+  if (!preloadMatch?.[1]) {
+    throw new Error('GET / missing modulepreload asset href')
+  }
+  const asset = await fetch(`http://${host}:${port}${preloadMatch[1]}`)
+  if (!asset.ok) {
+    throw new Error(`GET ${preloadMatch[1]} → ${asset.status}`)
+  }
+
+  const cssMatch = homeHtml.match(/href="(\/assets\/[^"]+\.css)"/)
+  if (cssMatch?.[1]) {
+    const css = await fetch(`http://${host}:${port}${cssMatch[1]}`)
+    if (!css.ok) {
+      throw new Error(`GET ${cssMatch[1]} → ${css.status}`)
+    }
   }
 
   console.info('[smoke] ok')

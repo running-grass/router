@@ -125,11 +125,15 @@
   },
   "peerDependencies": {
     "@rsbuild/core": "^2.0.0",
+    "@tailwindcss/node": "^4.0.0",
     "bun": ">=1.2.0",
     "vite": ">=7.0.0"
   },
   "peerDependenciesMeta": {
     "@rsbuild/core": {
+      "optional": true
+    },
+    "@tailwindcss/node": {
       "optional": true
     },
     "bun": {

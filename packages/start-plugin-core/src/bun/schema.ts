@@ -5,6 +5,7 @@ import {
 } from '../schema'
 import type { CompileStartFrameworkOptions } from '../types'
 import type { InlineCssInputOptions } from '../schema'
+import type { BunCssOptions, BunCoreOptions } from './types'
 
 export const tanstackStartBunOptionsSchema = tanstackStartOptionsObjectSchema
   .extend({
@@ -15,10 +16,17 @@ export const tanstackStartBunOptionsSchema = tanstackStartOptionsObjectSchema
         publicBase: z.string().optional(),
         port: z.number().int().positive().optional(),
         hostname: z.string().optional(),
-        // Plugins are runtime-only; keep schema permissive
+        // Plugins / css.transform are runtime-only; keep schema permissive
         plugins: z.array(z.any()).optional(),
         clientPlugins: z.array(z.any()).optional(),
         serverPlugins: z.array(z.any()).optional(),
+        css: z
+          .object({
+            tailwind: z.union([z.boolean(), z.literal('auto')]).optional(),
+            transform: z.any().optional(),
+            content: z.array(z.string()).optional(),
+          })
+          .optional(),
       })
       .optional(),
   })
@@ -38,15 +46,8 @@ export function parseStartConfig(
 export type TanStackStartBunInputConfig = z.input<
   typeof tanstackStartBunOptionsSchema
 > & {
-  bun?: {
-    clientOutDir?: string
-    serverOutDir?: string
-    publicBase?: string
-    port?: number
-    hostname?: string
-    plugins?: Array<import('bun').BunPlugin>
-    clientPlugins?: Array<import('bun').BunPlugin>
-    serverPlugins?: Array<import('bun').BunPlugin>
+  bun?: BunCoreOptions & {
+    css?: BunCssOptions
   }
   server?: {
     build?: {

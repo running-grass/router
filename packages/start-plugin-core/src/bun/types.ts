@@ -1,5 +1,20 @@
 import type { TanStackStartCoreOptions } from '../types'
 
+export interface BunCssOptions {
+  /**
+   * Tailwind v4 via optional peer `@tailwindcss/node`.
+   * - `'auto'` (default): enable when CSS references tailwindcss and the peer resolves
+   * - `true` / `false`: force on/off
+   */
+  tailwind?: boolean | 'auto' | undefined
+  /** Custom CSS transform; runs before Tailwind when both are set. */
+  transform?:
+    | ((css: string, ctx: { id: string }) => string | Promise<string>)
+    | undefined
+  /** Globs for Tailwind class scanning (default under src/). */
+  content?: Array<string> | undefined
+}
+
 export interface BunCoreOptions {
   /** Client output subdirectory under root (default: dist/client) */
   clientOutDir?: string | undefined
@@ -7,9 +22,9 @@ export interface BunCoreOptions {
   serverOutDir?: string | undefined
   /** Public asset base path (default: /) */
   publicBase?: string | undefined
-  /** Dev server port */
+  /** Dev / serve port */
   port?: number | undefined
-  /** Dev server hostname */
+  /** Dev / serve hostname */
   hostname?: string | undefined
   /**
    * Extra Bun.build plugins prepended for both client and server builds.
@@ -18,6 +33,8 @@ export interface BunCoreOptions {
   plugins?: Array<import('bun').BunPlugin> | undefined
   clientPlugins?: Array<import('bun').BunPlugin> | undefined
   serverPlugins?: Array<import('bun').BunPlugin> | undefined
+  /** CSS asset pipeline (`?url` / side-effect CSS + optional Tailwind). */
+  css?: BunCssOptions | undefined
 }
 
 export type TanStackStartBunPluginCoreOptions = TanStackStartCoreOptions & {
@@ -27,10 +44,16 @@ export type TanStackStartBunPluginCoreOptions = TanStackStartCoreOptions & {
 }
 
 export interface TanStackStartBunAdapter {
-  /** Production dual Bun.build (client then server) */
+  /** Production dual Bun.build (client then server) + host.js */
   build: (opts?: { root?: string }) => Promise<void>
   /** Integrated Bun.serve development server */
   dev: (opts?: {
+    root?: string
+    port?: number
+    hostname?: string
+  }) => Promise<{ stop: () => void; port: number; hostname: string }>
+  /** Production Bun.serve: dist/client static + dist/server/server.js */
+  serve: (opts?: {
     root?: string
     port?: number
     hostname?: string

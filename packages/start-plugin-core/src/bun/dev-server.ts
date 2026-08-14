@@ -1,5 +1,6 @@
 import { watch } from 'node:fs'
 import { join } from 'pathe'
+import { tryServeClientAsset } from './static-host'
 
 export interface BunDevServerOptions {
   root: string
@@ -166,16 +167,12 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
         })
       }
 
-      // Static assets from client outdir
-      if (url.pathname.startsWith('/assets/') || url.pathname.match(/\.\w+$/)) {
-        const assetPath = join(
-          opts.clientOutDir,
-          decodeURIComponent(url.pathname.replace(/^\//, '')),
-        )
-        const file = Bun.file(assetPath)
-        if (await file.exists()) {
-          return new Response(file)
-        }
+      const staticResponse = await tryServeClientAsset(
+        opts.clientOutDir,
+        url.pathname,
+      )
+      if (staticResponse) {
+        return staticResponse
       }
 
       const response = await handlerModule.default.fetch(req)

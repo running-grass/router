@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'pathe'
 import {
   applyResolvedBaseAndOutput,
@@ -19,6 +19,7 @@ import { createBunCompilerHosts } from './start-compiler-host'
 import { createBunImportProtectionPlugin } from './import-protection'
 import { createBunRouterSession } from './start-router-plugin'
 import { createBunAliasAndVirtualPlugin } from './bun-plugins'
+import { createCssAssetsPlugin } from './css-assets-plugin'
 import {
   enrichBunClientBuildFromSourcemaps,
   normalizeBunClientBuild,
@@ -26,6 +27,10 @@ import {
 } from './normalized-client-build'
 import { postBuildWithBun } from './post-build'
 import { createBunDevServer } from './dev-server'
+import {
+  createBunProdServer,
+  generateHostEntrySource,
+} from './static-host'
 import type { ServerFn } from '../start-compiler/types'
 import type { TanStackStartBunPluginCoreOptions } from './types'
 import type { TanStackStartBunInputConfig } from './schema'
@@ -153,6 +158,13 @@ export function tanStackStartBun(
     ctx.setPluginAdapters('client')
 
     const bunOpts = startPluginOpts.bun ?? corePluginOpts.bun
+    const cssPlugin = createCssAssetsPlugin({
+      root: ctx.resolvedStartConfig.root,
+      clientOutDir: ctx.outDirs.client,
+      publicBase: ctx.publicBase,
+      css: bunOpts?.css,
+      srcDirectory: ctx.resolvedStartConfig.srcDirectory,
+    })
     const extraPlugins = [
       ...(bunOpts?.plugins ?? []),
       ...(bunOpts?.clientPlugins ?? []),
@@ -175,6 +187,7 @@ export function tanStackStartBun(
       define: ctx.define,
       plugins: [
         ...extraPlugins,
+        cssPlugin,
         createBunAliasAndVirtualPlugin({
           aliases: ctx.entryAliases.alias,
           virtualModules: ctx.virtualModules,
@@ -231,6 +244,13 @@ export function tanStackStartBun(
     ctx.setPluginAdapters('server')
 
     const bunOpts = startPluginOpts.bun ?? corePluginOpts.bun
+    const cssPlugin = createCssAssetsPlugin({
+      root: ctx.resolvedStartConfig.root,
+      clientOutDir: ctx.outDirs.client,
+      publicBase: ctx.publicBase,
+      css: bunOpts?.css,
+      srcDirectory: ctx.resolvedStartConfig.srcDirectory,
+    })
     const extraPlugins = [
       ...(bunOpts?.plugins ?? []),
       ...(bunOpts?.serverPlugins ?? []),
@@ -252,6 +272,7 @@ export function tanStackStartBun(
       define: ctx.define,
       plugins: [
         ...extraPlugins,
+        cssPlugin,
         createBunAliasAndVirtualPlugin({
           aliases: ctx.entryAliases.alias,
           virtualModules: ctx.virtualModules,
@@ -282,6 +303,11 @@ export function tanStackStartBun(
       const ctx = await prepare(root, 'build')
       await buildClient(ctx)
       await buildServer(ctx)
+      await writeFile(
+        join(ctx.outDirs.server, 'host.js'),
+        generateHostEntrySource(),
+        'utf8',
+      )
       await postBuildWithBun({
         startConfig: ctx.startConfig,
         serverOutDir: ctx.outDirs.server,
@@ -314,6 +340,24 @@ export function tanStackStartBun(
           await buildServer(ctx)
         },
         invalidate: (ids) => ctx.compilers.invalidate(ids),
+      })
+    },
+
+    async serve(opts) {
+      const root = opts?.root ?? process.cwd()
+      const outDirs = resolveBunOutputDirectories({
+        root,
+        clientOutDir:
+          startPluginOpts.bun?.clientOutDir ?? corePluginOpts.bun?.clientOutDir,
+        serverOutDir:
+          startPluginOpts.bun?.serverOutDir ?? corePluginOpts.bun?.serverOutDir,
+      })
+      return createBunProdServer({
+        clientOutDir: outDirs.client,
+        serverOutDir: outDirs.server,
+        port: opts?.port ?? startPluginOpts.bun?.port ?? 3000,
+        hostname:
+          opts?.hostname ?? startPluginOpts.bun?.hostname ?? '0.0.0.0',
       })
     },
   }

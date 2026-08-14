@@ -15,10 +15,10 @@ Minimal example that builds with **Bun as the bundler** (no Vite).
 ```bash
 # from monorepo root (packages must resolve; Bun can load src via package exports)
 cd examples/react/start-bun-bundler
-bun run build   # → dist/client + dist/server (+ prerender when configured)
-bun run start   # production host
+bun run build   # → dist/client + dist/server/server.js + dist/server/host.js
+bun run start   # production host (host.js: static + SSR)
 bun run dev     # Bun.serve + watch rebuild + EventSource live-reload
-bun run smoke   # build + HTTP assertions for `/` and `/about`
+bun run smoke   # build + HTTP assertions for `/`, `/about`, and assets
 ```
 
 ## What this proves
@@ -29,12 +29,13 @@ bun run smoke   # build + HTTP assertions for `/` and `/about`
 - Import protection plugin (shared analysis layer)
 - Serialization adapters virtual module (`#tanstack-start-plugin-adapters`)
 - Post-build prerender for configured `pages`
-- Solid/Vue facades: `@tanstack/solid-start/plugin/bun`, `@tanstack/vue-start/plugin/bun`
+- Production host serves `dist/client` static assets (`host.js` / `serve()`)
+- CSS `?url` (+ optional Tailwind via `@tailwindcss/node`)
 
 ## Known gaps (later)
 
 - Dev is debounce rebuild + full-page live-reload (not module-level React Refresh / HMR)
 - No RSC / Nitro integration in this adapter
-- CSS / asset pipeline is thinner than Vite
+- Full Vite-parity asset pipeline (fonts/images beyond CSS) still thinner
 
 See `packages/start-plugin-core/src/bun/ARCHITECTURE.md` for orchestration details.

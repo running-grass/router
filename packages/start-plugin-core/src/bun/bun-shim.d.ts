@@ -75,6 +75,7 @@ declare module 'bun' {
   export function build(config: BuildConfig): Promise<BuildOutput>
   export function plugin(plugin: BunPlugin): void
   export function resolve(id: string, from?: string): Promise<string>
+  export function resolveSync(id: string, from?: string): string
   export function serve(options: {
     port?: number
     hostname?: string
@@ -90,6 +91,7 @@ declare module 'bun' {
     build: typeof build
     plugin: typeof plugin
     resolve: typeof resolve
+    resolveSync: typeof resolveSync
     serve: typeof serve
     file: typeof file
   }
