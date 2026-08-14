@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 
 const getMessage = createServerFn({ method: 'GET' }).handler(async () => {
@@ -18,6 +18,9 @@ function Home() {
       <p>{data.message}</p>
       <p>
         This example uses <code>@tanstack/react-start/plugin/bun</code> (no Vite).
+      </p>
+      <p>
+        <Link to="/about">About</Link>
       </p>
     </main>
   )

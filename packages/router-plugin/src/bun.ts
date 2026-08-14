@@ -1,18 +1,23 @@
 /**
  * Bun bundler adapter for @tanstack/router-plugin.
  *
- * Bun's plugin API is esbuild-adjacent. We re-export the esbuild factories and
- * provide Bun-friendly aliases so Start / apps can depend on
- * `@tanstack/router-plugin/bun` without importing the esbuild path.
- *
- * Route generation for the Start Bun adapter is primarily driven via
- * `Generator` from `@tanstack/router-generator` inside start-plugin-core/bun.
- * Use these plugins when wiring raw `Bun.build({ plugins })` yourself.
+ * Prefer the native Bun code-splitter for `Bun.build({ plugins })`.
+ * Esbuild-shaped factories remain available for tools that accept esbuild plugins.
  */
+export { configSchema } from './core/config'
 export {
-  configSchema,
+  createBunRouterCodeSplitterPlugin,
+  createBunRouterCodeSplitterRuntime,
+} from './core/bun-code-splitter-plugin'
+export type {
+  BunCodeSplitterOptions,
+  BunCodeSplitterRuntime,
+} from './core/bun-code-splitter-plugin'
+export { createRouterPluginContext } from './core/router-plugin-context'
+
+export {
   TanStackRouterGeneratorEsbuild as TanStackRouterGeneratorBun,
-  TanStackRouterCodeSplitterEsbuild as TanStackRouterCodeSplitterBun,
+  TanStackRouterCodeSplitterEsbuild as TanStackRouterCodeSplitterEsbuildBun,
   TanStackRouterEsbuild as TanStackRouterBun,
   tanstackRouter,
   TanStackRouterEsbuild as default,

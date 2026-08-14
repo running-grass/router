@@ -34,7 +34,16 @@ const server = await start.dev() // build + Bun.serve + src watch rebuild
 
 ## Dev
 
-`createBunDevServer`：`Bun.serve` 托管 `dist/server/server.js` + `dist/client` 静态资源；`fs.watch(src)` 触发全量 rebuild（Phase 4 可细化 HMR）。
+`createBunDevServer`：`Bun.serve` 托管 `dist/server/server.js` + `dist/client` 静态资源；
+对 `src/` 做 debounce 重建，并通过 EventSource (`/__tanstack_bun_reload`) 注入整页 live-reload。
+精细 React Refresh / 模块级 HMR 仍待后续。
+
+## Code splitting
+
+`createBunRouterSession` 共享 `RouterPluginContext`：
+1. Generator 写入 `routesByFile`
+2. reference 变换在 StartCompiler `onLoad` 内串联（Bun 每个模块只能有一个成功的 onLoad）
+3. `createBunRouterCodeSplitterRuntime().plugin` 仅处理 `?tsr-split` / `?tsr-shared` 虚拟模块
 
 ## 文件
 

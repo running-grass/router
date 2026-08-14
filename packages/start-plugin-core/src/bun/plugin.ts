@@ -17,10 +17,7 @@ import {
 import { createBunVirtualModuleStore, VIRTUAL_MODULES } from './virtual-modules'
 import { createBunCompilerHosts } from './start-compiler-host'
 import { createBunImportProtectionPlugin } from './import-protection'
-import {
-  createBunRouterPlugin,
-  runBunRouterGenerator,
-} from './start-router-plugin'
+import { createBunRouterSession } from './start-router-plugin'
 import { createBunAliasAndVirtualPlugin } from './bun-plugins'
 import {
   normalizeBunClientBuild,
@@ -106,6 +103,15 @@ export function tanStackStartBun(
     }
     refreshResolver()
 
+    const routerSession = createBunRouterSession({
+      root,
+      framework: corePluginOpts.framework,
+      routerConfig: startConfig.router,
+      prerenderEnabled: startConfig.prerender?.enabled === true,
+      isProduction: mode === 'build',
+    })
+    await routerSession.generate()
+
     const compilers = createBunCompilerHosts({
       root,
       framework: corePluginOpts.framework,
@@ -114,9 +120,9 @@ export function tanStackStartBun(
       ssrIsProvider: corePluginOpts.ssrIsProvider,
       serverFnsById,
       onRegistryChange: refreshResolver,
+      preprocessCode: (code, id, env) =>
+        routerSession.getCodeSplitterRuntime(env).transformReference(code, id),
     })
-
-    await runBunRouterGenerator({ root })
 
     return {
       startConfig,
@@ -126,6 +132,7 @@ export function tanStackStartBun(
       serverFnsById,
       virtualModules,
       compilers,
+      routerSession,
       outDirs,
       publicBase: resolvedStartConfig.basePaths.publicBase,
       refreshResolver,
@@ -155,7 +162,7 @@ export function tanStackStartBun(
           aliases: ctx.entryAliases.alias,
           virtualModules: ctx.virtualModules,
         }),
-        createBunRouterPlugin({ root: ctx.resolvedStartConfig.root }),
+        ctx.routerSession.createCodeSplitterPlugin('client'),
         ctx.compilers.createTransformPlugin('client'),
         createBunImportProtectionPlugin({
           envName: BUN_ENVIRONMENT_NAMES.client,
@@ -219,7 +226,7 @@ export function tanStackStartBun(
           aliases: ctx.entryAliases.alias,
           virtualModules: ctx.virtualModules,
         }),
-        createBunRouterPlugin({ root: ctx.resolvedStartConfig.root }),
+        ctx.routerSession.createCodeSplitterPlugin('server'),
         ctx.compilers.createTransformPlugin('server'),
         createBunImportProtectionPlugin({
           envName: BUN_ENVIRONMENT_NAMES.server,
@@ -272,7 +279,7 @@ export function tanStackStartBun(
           Object.keys(ctx.serverFnsById).forEach((k) => {
             delete ctx.serverFnsById[k]
           })
-          await runBunRouterGenerator({ root })
+          await ctx.routerSession.generate()
           await buildClient(ctx)
           await buildServer(ctx)
         },

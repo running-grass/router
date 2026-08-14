@@ -22,6 +22,15 @@ export interface BunCompilerHostOptions {
   serverFnsById: Record<string, ServerFn>
   /** Called after registry mutations so virtual modules can refresh */
   onRegistryChange?: () => void
+  /**
+   * Optional preprocess (e.g. route code-splitter reference transform).
+   * Runs before StartCompiler so both share a single Bun onLoad.
+   */
+  preprocessCode?: (
+    code: string,
+    id: string,
+    env: 'client' | 'server',
+  ) => string | Promise<string>
 }
 
 export interface BunCompilerHosts {
@@ -153,16 +162,28 @@ export function createBunCompilerHosts(
             return undefined
           }
 
-          const code = await readFile(args.path, 'utf8')
-          if (!matchesCodeFilters(code, codeFilter)) {
+          let code = await readFile(args.path, 'utf8')
+          const originalCode = code
+          if (opts.preprocessCode) {
+            code = await opts.preprocessCode(code, args.path, env)
+          }
+          const preprocessed = code !== originalCode
+
+          const needsStartCompile =
+            matchesCodeFilters(code, codeFilter) &&
+            detectKindsInCode(code, env).size > 0
+
+          if (!needsStartCompile) {
+            if (preprocessed) {
+              return {
+                contents: code,
+                loader: args.path.endsWith('x') ? 'tsx' : 'ts',
+              }
+            }
             return undefined
           }
 
           const detectedKinds = detectKindsInCode(code, env)
-          if (detectedKinds.size === 0) {
-            return undefined
-          }
-
           const result = await compiler.compile({
             code,
             id: args.path,
@@ -170,6 +191,12 @@ export function createBunCompilerHosts(
           })
 
           if (!result) {
+            if (preprocessed) {
+              return {
+                contents: code,
+                loader: args.path.endsWith('x') ? 'tsx' : 'ts',
+              }
+            }
             return undefined
           }
 
