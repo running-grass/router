@@ -445,7 +445,23 @@ bun run server.ts
 🚀 Server running at http://localhost:3000
 ```
 
-For a complete working example, check out the [TanStack Start + Bun example](https://github.com/TanStack/router/tree/main/examples/react/start-bun) in this repository.
+For a complete working example of **Vite build + Bun HTTP host**, check out the [TanStack Start + Bun example](https://github.com/TanStack/router/tree/main/examples/react/start-bun) in this repository.
+
+### Bun as the bundler (experimental)
+
+There is also an experimental path that uses **Bun as the bundler** (no Vite), via `@tanstack/react-start/plugin/bun`:
+
+```ts
+import { tanstackStart } from '@tanstack/react-start/plugin/bun'
+
+const start = tanstackStart({ bun: { port: 3000 } })
+await start.build()
+// or: await start.dev()
+```
+
+See the [`start-bun-bundler`](https://github.com/TanStack/router/tree/main/examples/react/start-bun-bundler) example. Solid/Vue mirrors: `@tanstack/solid-start/plugin/bun`, `@tanstack/vue-start/plugin/bun`.
+
+> Module-level HMR, RSC, and Nitro are not part of this adapter yet.
 
 ### Appwrite Sites
 

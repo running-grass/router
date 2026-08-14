@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeBunClientBuild } from '../src/bun/normalized-client-build'
+import { writeFile, mkdir } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import {
+  enrichBunClientBuildFromSourcemaps,
+  normalizeBunClientBuild,
+} from '../src/bun/normalized-client-build'
 
 describe('normalizeBunClientBuild', () => {
   it('marks entry-point as the SSR entry chunk', () => {
@@ -47,5 +53,53 @@ describe('normalizeBunClientBuild', () => {
     expect(
       build.chunkFileNamesByRouteFilePath.get('/app/src/routes/posts.tsx'),
     ).toEqual(['assets/index.js'])
+  })
+
+  it('enriches route file paths from linked sourcemap sources', async () => {
+    const dir = join(tmpdir(), `bun-ncb-${Date.now()}`)
+    await mkdir(dir, { recursive: true })
+    const jsPath = join(dir, 'about.js')
+    const mapPath = `${jsPath}.map`
+    await writeFile(jsPath, 'export {}')
+    await writeFile(
+      mapPath,
+      JSON.stringify({
+        version: 3,
+        sources: [
+          'tsr-split:/app/src/routes/about.tsx?tsr-split=component',
+        ],
+        mappings: '',
+      }),
+    )
+
+    const outputs = [
+      {
+        path: jsPath,
+        fileName: 'about.js',
+        kind: 'chunk' as const,
+        sourcemapPath: mapPath,
+      },
+      {
+        path: join(dir, 'main.js'),
+        fileName: 'main.js',
+        kind: 'entry-point' as const,
+      },
+    ]
+
+    let build = normalizeBunClientBuild({
+      clientOutDir: dir,
+      outputs,
+    })
+    build = await enrichBunClientBuildFromSourcemaps({
+      clientBuild: build,
+      outputs,
+    })
+
+    expect(build.chunksByFileName.get('about.js')?.routeFilePaths).toEqual([
+      '/app/src/routes/about.tsx',
+    ])
+    expect(
+      build.chunkFileNamesByRouteFilePath.get('/app/src/routes/about.tsx'),
+    ).toEqual(['about.js'])
   })
 })

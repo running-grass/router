@@ -6,7 +6,7 @@ import {
   createStartConfigContext,
 } from '../config-context'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
-import { EMPTY_SERIALIZATION_ADAPTERS_MODULE } from '../serialization-adapters-module'
+import { generateSerializationAdaptersModule } from '../serialization-adapters-module'
 import { parseStartConfig } from './schema'
 import {
   BUN_ENVIRONMENT_NAMES,
@@ -20,6 +20,7 @@ import { createBunImportProtectionPlugin } from './import-protection'
 import { createBunRouterSession } from './start-router-plugin'
 import { createBunAliasAndVirtualPlugin } from './bun-plugins'
 import {
+  enrichBunClientBuildFromSourcemaps,
   normalizeBunClientBuild,
   toClientRelativeFileName,
 } from './normalized-client-build'
@@ -91,10 +92,17 @@ export function tanStackStartBun(
 
     const serverFnsById: Record<string, ServerFn> = {}
     const virtualModules = createBunVirtualModuleStore()
-    virtualModules.set(
-      VIRTUAL_MODULES.pluginAdapters,
-      EMPTY_SERIALIZATION_ADAPTERS_MODULE,
-    )
+
+    const setPluginAdapters = (runtime: 'client' | 'server') => {
+      virtualModules.set(
+        VIRTUAL_MODULES.pluginAdapters,
+        generateSerializationAdaptersModule({
+          adapters: corePluginOpts.serializationAdapters,
+          runtime,
+        }),
+      )
+    }
+    setPluginAdapters('server')
 
     const refreshResolver = () => {
       virtualModules.updateServerFnResolver(serverFnsById, {
@@ -136,11 +144,13 @@ export function tanStackStartBun(
       outDirs,
       publicBase: resolvedStartConfig.basePaths.publicBase,
       refreshResolver,
+      setPluginAdapters,
     }
   }
 
   async function buildClient(ctx: Awaited<ReturnType<typeof prepare>>) {
     await mkdir(ctx.outDirs.client, { recursive: true })
+    ctx.setPluginAdapters('client')
 
     const result = await Bun.build({
       entrypoints: [ctx.entryAliases.client],
@@ -183,11 +193,16 @@ export function tanStackStartBun(
       path: o.path,
       fileName: toClientRelativeFileName(o.path, ctx.outDirs.client),
       kind: o.kind,
+      sourcemapPath: `${o.path}.map`,
     }))
 
-    const clientBuild = normalizeBunClientBuild({
+    let clientBuild = normalizeBunClientBuild({
       outputs,
       clientOutDir: ctx.outDirs.client,
+    })
+    clientBuild = await enrichBunClientBuildFromSourcemaps({
+      clientBuild,
+      outputs,
     })
 
     ctx.virtualModules.updateManifest({
@@ -206,6 +221,7 @@ export function tanStackStartBun(
 
   async function buildServer(ctx: Awaited<ReturnType<typeof prepare>>) {
     await mkdir(ctx.outDirs.server, { recursive: true })
+    ctx.setPluginAdapters('server')
 
     const result = await Bun.build({
       entrypoints: [ctx.entryAliases.server],

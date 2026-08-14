@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import { relative } from 'pathe'
 import { tsrSplit } from '@tanstack/router-plugin'
 import type { NormalizedClientBuild, NormalizedClientChunk } from '../types'
@@ -8,10 +9,16 @@ export interface BunClientOutputLike {
   kind: string
   /** Optional Bun input paths (may include ?tsr-split=...) when available. */
   inputs?: Array<{ path: string }>
+  /** Absolute path to a sibling `.map` file when sourcemaps are linked. */
+  sourcemapPath?: string
 }
 
 /**
  * Best-effort normalization of Bun.build client outputs into NormalizedClientBuild.
+ *
+ * Bun BuildArtifact does not expose Rollup-style module graphs, so routeFilePaths
+ * are recovered from linked sourcemap `sources` (and optional `inputs`) that include
+ * `?tsr-split=...` virtual modules.
  */
 export function normalizeBunClientBuild(opts: {
   outputs: Array<BunClientOutputLike>
@@ -19,6 +26,8 @@ export function normalizeBunClientBuild(opts: {
 }): NormalizedClientBuild {
   const chunksByFileName = new Map<string, NormalizedClientChunk>()
   const chunkFileNamesByRouteFilePath = new Map<string, Array<string>>()
+  const cssFilesBySourcePath = new Map<string, Array<string>>()
+  const cssContentByFileName = new Map<string, string>()
   let entryChunkFileName: string | undefined
 
   for (const artifact of opts.outputs) {
@@ -26,6 +35,7 @@ export function normalizeBunClientBuild(opts: {
     const kind = artifact.kind
 
     if (kind === 'asset' && fileName.endsWith('.css')) {
+      cssContentByFileName.set(fileName, '')
       continue
     }
 
@@ -78,8 +88,67 @@ export function normalizeBunClientBuild(opts: {
     entryChunkFileName,
     chunksByFileName,
     chunkFileNamesByRouteFilePath,
-    cssFilesBySourcePath: new Map(),
-    cssContentByFileName: new Map(),
+    cssFilesBySourcePath,
+    cssContentByFileName,
+  }
+}
+
+/**
+ * Enrich a NormalizedClientBuild by reading linked `.js.map` sources next to outputs.
+ */
+export async function enrichBunClientBuildFromSourcemaps(opts: {
+  clientBuild: NormalizedClientBuild
+  outputs: Array<BunClientOutputLike>
+}): Promise<NormalizedClientBuild> {
+  const chunksByFileName = new Map(opts.clientBuild.chunksByFileName)
+  const chunkFileNamesByRouteFilePath = new Map(
+    [...opts.clientBuild.chunkFileNamesByRouteFilePath.entries()].map(
+      ([key, value]) => [key, [...value]] as [string, Array<string>],
+    ),
+  )
+
+  for (const artifact of opts.outputs) {
+    if (artifact.kind !== 'entry-point' && artifact.kind !== 'chunk') {
+      continue
+    }
+    const fileName = artifact.fileName.replace(/^\.\//, '')
+    const chunk = chunksByFileName.get(fileName)
+    if (!chunk) {
+      continue
+    }
+
+    const mapPath = artifact.sourcemapPath ?? `${artifact.path}.map`
+    const sources = await readSourcemapSources(mapPath)
+    if (!sources.length) {
+      continue
+    }
+
+    const routeFilePaths = getRouteFilePathsFromInputs(
+      sources.map((path) => ({ path })),
+    )
+    if (!routeFilePaths.length) {
+      continue
+    }
+
+    const merged = [...new Set([...chunk.routeFilePaths, ...routeFilePaths])]
+    chunksByFileName.set(fileName, {
+      ...chunk,
+      routeFilePaths: merged,
+    })
+
+    for (const routeFilePath of routeFilePaths) {
+      const existing = chunkFileNamesByRouteFilePath.get(routeFilePath) ?? []
+      if (!existing.includes(fileName)) {
+        existing.push(fileName)
+      }
+      chunkFileNamesByRouteFilePath.set(routeFilePath, existing)
+    }
+  }
+
+  return {
+    ...opts.clientBuild,
+    chunksByFileName,
+    chunkFileNamesByRouteFilePath,
   }
 }
 
@@ -91,7 +160,7 @@ export function toClientRelativeFileName(
   return rel.replace(/\\/g, '/')
 }
 
-function getRouteFilePathsFromInputs(
+export function getRouteFilePathsFromInputs(
   inputs: Array<{ path: string }> | undefined,
 ): Array<string> {
   if (!inputs?.length) return []
@@ -100,18 +169,51 @@ function getRouteFilePathsFromInputs(
   const seen = new Set<string>()
 
   for (const input of inputs) {
-    const id = input.path
-    const queryIndex = id.indexOf('?')
-    if (queryIndex < 0) continue
-    const query = id.slice(queryIndex + 1)
-    if (!query.includes(tsrSplit)) continue
-    if (!new URLSearchParams(query).has(tsrSplit)) continue
-
-    const routeFilePath = id.slice(0, queryIndex)
-    if (seen.has(routeFilePath)) continue
+    const routeFilePath = extractRouteFilePathFromSource(input.path)
+    if (!routeFilePath || seen.has(routeFilePath)) continue
     seen.add(routeFilePath)
     paths.push(routeFilePath)
   }
 
   return paths
+}
+
+function extractRouteFilePathFromSource(id: string): string | undefined {
+  // Bun sourcemaps often prefix virtual namespaces: tsr-split:/abs/path?tsr-split=...
+  let normalized = id
+  const ns = normalized.indexOf(':/')
+  if (
+    ns > 0 &&
+    !normalized.startsWith('/') &&
+    !normalized.startsWith('file:')
+  ) {
+    // Keep absolute path after "namespace:"
+    const after = normalized.slice(ns + 1)
+    if (after.startsWith('/')) {
+      normalized = after
+    }
+  }
+
+  const queryIndex = normalized.indexOf('?')
+  if (queryIndex < 0) {
+    return undefined
+  }
+  const query = normalized.slice(queryIndex + 1)
+  if (!query.includes(tsrSplit)) {
+    return undefined
+  }
+  if (!new URLSearchParams(query).has(tsrSplit)) {
+    return undefined
+  }
+  return normalized.slice(0, queryIndex)
+}
+
+async function readSourcemapSources(mapPath: string): Promise<Array<string>> {
+  try {
+    const raw = await readFile(mapPath, 'utf8')
+    const parsed = JSON.parse(raw) as { sources?: Array<string> }
+    return parsed.sources ?? []
+  } catch {
+    return []
+  }
 }

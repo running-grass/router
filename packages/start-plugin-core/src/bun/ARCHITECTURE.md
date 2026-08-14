@@ -30,7 +30,7 @@ const server = await start.dev() // build + Bun.serve + src watch rebuild
 | `virtual:tanstack-start-*-entry` / `#tanstack-*` | entry alias |
 | `#tanstack-start-server-fn-resolver` | serverFn registry |
 | `tanstack-start-manifest:v` | SSR 资源 manifest |
-| `#tanstack-start-plugin-adapters` | serialization adapters（一期为空） |
+| `#tanstack-start-plugin-adapters` | serialization adapters（按 client/server runtime 生成） |
 
 ## Dev
 

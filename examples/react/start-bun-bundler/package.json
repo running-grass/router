@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "bun run ./scripts/dev.ts",
     "build": "bun run ./scripts/build.ts",
-    "start": "bun run ./dist/server/server.js"
+    "start": "bun run ./dist/server/server.js",
+    "smoke": "bun run ./scripts/smoke.ts",
+    "test:e2e": "bun run smoke"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:*",

@@ -1,0 +1,69 @@
+/**
+ * Smoke check: build → serve → assert `/` and `/about` SSR HTML.
+ * Run after packages are built: `bun run smoke`
+ */
+import { spawn } from 'node:child_process'
+import { join } from 'node:path'
+
+const root = join(import.meta.dir, '..')
+const port = 3457
+const host = '127.0.0.1'
+
+async function waitForServer(url: string, attempts = 40) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(url)
+      if (res.ok || res.status === 200) {
+        return
+      }
+    } catch {
+      // retry
+    }
+    await Bun.sleep(100)
+  }
+  throw new Error(`Server did not become ready at ${url}`)
+}
+
+console.info('[smoke] building…')
+const build = spawn('bun', ['run', './scripts/build.ts'], {
+  cwd: root,
+  stdio: 'inherit',
+})
+await new Promise<void>((resolve, reject) => {
+  build.on('exit', (code) =>
+    code === 0 ? resolve() : reject(new Error(`build exited ${code}`)),
+  )
+})
+
+console.info('[smoke] starting server…')
+const server = spawn('bun', ['run', './server.ts'], {
+  cwd: root,
+  env: { ...process.env, PORT: String(port) },
+  stdio: ['ignore', 'pipe', 'pipe'],
+})
+
+try {
+  await waitForServer(`http://${host}:${port}/`)
+
+  const home = await fetch(`http://${host}:${port}/`)
+  const homeHtml = await home.text()
+  if (!home.ok) {
+    throw new Error(`GET / → ${home.status}`)
+  }
+  if (!homeHtml.includes('Hello from Bun-bundled Start')) {
+    throw new Error('GET / missing loader message in HTML')
+  }
+
+  const about = await fetch(`http://${host}:${port}/about`)
+  const aboutHtml = await about.text()
+  if (!about.ok) {
+    throw new Error(`GET /about → ${about.status}`)
+  }
+  if (!aboutHtml.includes('Second route')) {
+    throw new Error('GET /about missing expected body')
+  }
+
+  console.info('[smoke] ok')
+} finally {
+  server.kill('SIGTERM')
+}
