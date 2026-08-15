@@ -81,7 +81,7 @@ export async function runBunStandaloneCompile(opts: {
 
   const entryPath = join(opts.serverOutDir, '.standalone-entry.js')
   const importLines: Array<string> = [
-    `import handler from ${JSON.stringify('./server.js')}`,
+    `import * as handler from ${JSON.stringify('./server.js')}`,
   ]
   const mapEntries: Array<string> = []
 
@@ -121,6 +121,20 @@ function resolveEmbedded(pathname) {
   return null
 }
 
+function resolveFetchHandler(mod) {
+  const candidates = [mod?.default, mod?.default?.default, mod]
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate.fetch === 'function') {
+      return (req) => candidate.fetch(req)
+    }
+  }
+  throw new Error(
+    '[tanstack-start-bun] standalone: server entry missing default.fetch',
+  )
+}
+
+const fetchHandler = resolveFetchHandler(handler)
+
 const port = Number(process.env.PORT ?? 3000)
 const hostname = process.env.HOST ?? '0.0.0.0'
 
@@ -134,7 +148,7 @@ const server = Bun.serve({
       // import with { type: "file" } yields a bunfs path string
       return new Response(Bun.file(embedded))
     }
-    return handler.default.fetch(req)
+    return fetchHandler(req)
   },
 })
 
@@ -158,8 +172,8 @@ console.info(\`[tanstack-start-bun] standalone http://\${hostname}:\${server.por
     packages: 'bundle',
     sourcemap: 'none',
     // outfile must live under `compile` (top-level outfile is ignored when compiling)
-    compile: compileOpt as import('bun').BuildConfig['compile'],
-  })
+    compile: compileOpt,
+  } as import('bun').BuildConfig)
 
   if (!result.success) {
     const message = result.logs.map(String).join('\n')

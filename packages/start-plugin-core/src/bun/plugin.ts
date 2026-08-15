@@ -322,7 +322,7 @@ export function tanStackStartBun(
       let clientOutDirForPostBuild = ctx.outDirs.client
 
       // Nitro after dual Bun.build; prerender after Nitro so public dir is final.
-      if (nitroOpt && nitroOpt !== false) {
+      if (nitroOpt) {
         const nitroResult = await runBunNitroBuild({
           root,
           clientOutDir: ctx.outDirs.client,
@@ -342,7 +342,7 @@ export function tanStackStartBun(
       const standaloneOpt =
         startPluginOpts.bun?.standalone ?? corePluginOpts.bun?.standalone
       // Always embed dist/client (not Nitro .output/public).
-      if (standaloneOpt && standaloneOpt !== false) {
+      if (standaloneOpt) {
         const result = await runBunStandaloneCompile({
           root,
           clientOutDir: ctx.outDirs.client,

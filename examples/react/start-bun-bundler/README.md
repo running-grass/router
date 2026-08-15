@@ -45,3 +45,9 @@ bun run smoke:standalone
 - No RSC；Nitro/standalone 仅生产；asset 管线仍薄于 Vite
 
 See `packages/start-plugin-core/src/bun/ARCHITECTURE.md`.
+
+## 给其它仓库用（GitHub Packages）
+
+本 fork 可通过 GitHub Packages 发布 `@running-grass/*`（脚本重写 scope）。其它仓用 npm alias 继续依赖 `@tanstack/*`。
+
+详见 [`scripts/github-packages/README.md`](../../../scripts/github-packages/README.md)。
